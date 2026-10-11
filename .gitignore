@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test and tooling output
+playwright-report/
+test-results/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated Prisma client
+backend/src/generated/prisma/
+
+# Local backup files
+*.backup
