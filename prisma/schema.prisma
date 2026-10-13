@@ -7,3 +7,211 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum FamilyRole {
+  ADMIN
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  LEFT
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum SetStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum RoundStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Family {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String             @db.VarChar(100)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  memberships FamilyMembership[]
+  players     Player[]
+  invitations FamilyInvitation[]
+  sessions    GameSession[]
+}
+
+model FamilyMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  familyId       String           @db.Uuid
+  supabaseUserId String           @db.VarChar(255)
+  email          String           @db.VarChar(320)
+  role           FamilyRole       @default(MEMBER)
+  status         MembershipStatus @default(ACTIVE)
+  joinedAt       DateTime         @default(now())
+  leftAt         DateTime?
+  family         Family           @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  player         Player?
+  createdSessions GameSession[]   @relation("SessionCreator")
+  sentInvitations FamilyInvitation[] @relation("InvitationSender")
+  acceptedInvitations FamilyInvitation[] @relation("InvitationAccepter")
+  scoreAudits    ScoreAudit[]
+
+  @@unique([familyId, supabaseUserId])
+  @@unique([id, familyId])
+  @@index([supabaseUserId, status])
+  @@index([familyId, status])
+}
+
+model Player {
+  id           String             @id @default(uuid()) @db.Uuid
+  familyId     String             @db.Uuid
+  membershipId String             @db.Uuid
+  displayName  String             @db.VarChar(100)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  family       Family             @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  membership   FamilyMembership  @relation(fields: [membershipId, familyId], references: [id, familyId], onDelete: Restrict)
+  participants SessionParticipant[]
+
+  @@unique([id, familyId])
+  @@unique([membershipId, familyId])
+  @@index([familyId, isActive])
+}
+
+model FamilyInvitation {
+  id                    String           @id @default(uuid()) @db.Uuid
+  familyId              String           @db.Uuid
+  email                 String           @db.VarChar(320)
+  tokenHash             String           @unique @db.VarChar(255)
+  status                InvitationStatus @default(PENDING)
+  expiresAt             DateTime
+  acceptedAt            DateTime?
+  revokedAt             DateTime?
+  invitedByMembershipId String           @db.Uuid
+  acceptedByMembershipId String?         @db.Uuid
+  createdAt             DateTime         @default(now())
+  family                Family           @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  invitedBy             FamilyMembership @relation("InvitationSender", fields: [invitedByMembershipId, familyId], references: [id, familyId], onDelete: Restrict)
+  acceptedBy            FamilyMembership? @relation("InvitationAccepter", fields: [acceptedByMembershipId, familyId], references: [id, familyId], onDelete: Restrict)
+
+  @@index([familyId, status, expiresAt])
+  @@index([email, status])
+}
+
+model GameSession {
+  id                    String         @id @default(uuid()) @db.Uuid
+  familyId              String         @db.Uuid
+  sessionDate           DateTime       @db.Date
+  status                SessionStatus  @default(IN_PROGRESS)
+  version               Int            @default(1)
+  createdByMembershipId String         @db.Uuid
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  family                Family         @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  createdBy             FamilyMembership @relation("SessionCreator", fields: [createdByMembershipId, familyId], references: [id, familyId], onDelete: Restrict)
+  participants          SessionParticipant[]
+  sets                  GameSet[]
+  scores                RoundScore[]
+  scoreAudits           ScoreAudit[]
+
+  @@unique([id, familyId])
+  @@index([familyId, sessionDate])
+  @@index([familyId, status, sessionDate])
+}
+
+model SessionParticipant {
+  id            String       @id @default(uuid()) @db.Uuid
+  sessionId     String       @db.Uuid
+  familyId      String       @db.Uuid
+  playerId      String       @db.Uuid
+  displayName   String       @db.VarChar(100)
+  joinedAt      DateTime     @default(now())
+  session       GameSession  @relation(fields: [sessionId, familyId], references: [id, familyId], onDelete: Restrict)
+  player        Player       @relation(fields: [playerId, familyId], references: [id, familyId], onDelete: Restrict)
+  scores        RoundScore[]
+
+  @@unique([sessionId, playerId])
+  @@unique([id, sessionId])
+  @@index([familyId, sessionId])
+}
+
+model GameSet {
+  id        String      @id @default(uuid()) @db.Uuid
+  sessionId String      @db.Uuid
+  setNumber Int
+  status    SetStatus   @default(IN_PROGRESS)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  session   GameSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  rounds    Round[]
+
+  @@unique([sessionId, setNumber])
+  @@unique([id, sessionId])
+  @@index([sessionId, status])
+}
+
+model Round {
+  id        String      @id @default(uuid()) @db.Uuid
+  setId     String      @db.Uuid
+  sessionId String      @db.Uuid
+  roundNumber Int
+  status    RoundStatus @default(IN_PROGRESS)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  gameSet   GameSet     @relation(fields: [setId, sessionId], references: [id, sessionId], onDelete: Restrict)
+  scores    RoundScore[]
+
+  @@unique([setId, roundNumber])
+  @@unique([id, sessionId])
+  @@index([sessionId, status])
+}
+
+model RoundScore {
+  id                    String             @id @default(uuid()) @db.Uuid
+  roundId               String             @db.Uuid
+  sessionId             String             @db.Uuid
+  participantId         String             @db.Uuid
+  familyId              String             @db.Uuid
+  points                Int
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  round                 Round              @relation(fields: [roundId, sessionId], references: [id, sessionId], onDelete: Restrict)
+  participant           SessionParticipant @relation(fields: [participantId, sessionId], references: [id, sessionId], onDelete: Restrict)
+  family                GameSession        @relation(fields: [sessionId, familyId], references: [id, familyId], onDelete: Restrict)
+  audits                ScoreAudit[]
+
+  @@unique([roundId, participantId])
+  @@unique([id, sessionId])
+  @@index([participantId, roundId])
+}
+
+model ScoreAudit {
+  id                  String           @id @default(uuid()) @db.Uuid
+  scoreId             String           @db.Uuid
+  sessionId           String           @db.Uuid
+  familyId            String           @db.Uuid
+  actorMembershipId   String           @db.Uuid
+  oldPoints           Int
+  newPoints           Int
+  reason              String?          @db.VarChar(500)
+  createdAt           DateTime         @default(now())
+  score               RoundScore       @relation(fields: [scoreId, sessionId], references: [id, sessionId], onDelete: Restrict)
+  actor               FamilyMembership @relation(fields: [actorMembershipId, familyId], references: [id, familyId], onDelete: Restrict)
+  family              GameSession      @relation(fields: [sessionId, familyId], references: [id, familyId], onDelete: Restrict)
+
+  @@index([scoreId, createdAt])
+  @@index([actorMembershipId, createdAt])
+}
