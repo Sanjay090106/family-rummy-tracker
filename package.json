@@ -12,8 +12,12 @@
       "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
       "typecheck": "npm run typecheck --workspace=backend && npm run build --workspace=frontend",
       "test": "npm run test --workspaces --if-present",
-      "lint": "npm run lint --workspace=frontend"
+      "lint": "npm run lint --workspace=frontend",
+      "db:generate": "prisma generate",
+      "db:validate": "prisma validate",
+      "db:migrate": "prisma migrate dev"
     },
+
     "devDependencies": {
       "dotenv": "^18.0.7",
       "prisma": "^7.10.0",
