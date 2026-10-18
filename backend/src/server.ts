@@ -4,12 +4,22 @@ import cors from "cors";
 import helmet from "helmet";
 import { prisma } from "./config/prisma";
 
+import familyRoutes from "./routes/family.routes";
+import invitationRoutes from "./routes/invitation.routes";
+import memberRoutes from "./routes/member.routes";
+import playerRoutes from "./routes/player.routes";
+import sessionRoutes from "./routes/session.routes";
+
+import { errorHandler } from "./middleware/error-handler";
+
 const app = express();
 
+// Security and request middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Health check
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -17,6 +27,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// Database health check
 app.get("/api/health/db", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -37,5 +48,16 @@ app.get("/api/health/db", async (_req, res) => {
     });
   }
 });
+
+// API routes
+app.use("/api", familyRoutes);
+app.use("/api", invitationRoutes);
+app.use("/api", memberRoutes);
+app.use("/api", playerRoutes);
+app.use("/api", sessionRoutes);
+
+// Centralized error handler
+// Must be registered after all routes.
+app.use(errorHandler);
 
 export default app;
