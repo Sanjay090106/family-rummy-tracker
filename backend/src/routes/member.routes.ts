@@ -29,7 +29,7 @@ const updateRoleSchema = {
  * Update a member's role, subject to ADMIN authorization.
  */
 router.patch(
-  "/:familyId/members/:membershipId",
+  "/families/:familyId/members/:membershipId",
   authenticate,
   validateRequest(updateRoleSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -61,7 +61,7 @@ router.patch(
  * Allow authenticated member to leave their own membership.
  */
 router.post(
-  "/:familyId/members/:membershipId/leave",
+  "/families/:familyId/members/:membershipId/leave",
   authenticate,
   validateRequest(memberParamsSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {

@@ -43,9 +43,11 @@ const updatePlayerSchema = {
       isActive: z.boolean().optional(),
     })
     .refine(
-      (data) => data.displayName !== undefined || data.isActive !== undefined,
+      (data) =>
+        data.displayName !== undefined || data.isActive !== undefined,
       {
-        message: "At least one of displayName or isActive must be provided",
+        message:
+          "At least one of displayName or isActive must be provided",
       }
     ),
 };
@@ -55,7 +57,7 @@ const updatePlayerSchema = {
  * Return players belonging to the requested family.
  */
 router.get(
-  "/:familyId/players",
+  "/families/:familyId/players",
   authenticate,
   validateRequest(familyIdParamSchema),
   authorizeFamily(),
@@ -80,7 +82,7 @@ router.get(
  * Create a player linked to an eligible membership in the same family.
  */
 router.post(
-  "/:familyId/players",
+  "/families/:familyId/players",
   authenticate,
   validateRequest(createPlayerSchema),
   authorizeFamily(),
@@ -112,7 +114,7 @@ router.post(
  * Update a player belonging to the requested family.
  */
 router.patch(
-  "/:familyId/players/:playerId",
+  "/families/:familyId/players/:playerId",
   authenticate,
   validateRequest(updatePlayerSchema),
   authorizeFamily(),

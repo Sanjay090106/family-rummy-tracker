@@ -29,7 +29,7 @@ const familyIdParamSchema = {
  * List families where authenticated user has an ACTIVE membership.
  */
 router.get(
-  "/",
+  "/families",
   authenticate,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -51,7 +51,7 @@ router.get(
  * Create family and creator's initial ADMIN membership atomically.
  */
 router.post(
-  "/",
+  "/families",
   authenticate,
   validateRequest(createFamilySchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -88,7 +88,7 @@ router.post(
  * Return family details only to an active member.
  */
 router.get(
-  "/:familyId",
+  "/families/:familyId",
   authenticate,
   validateRequest(familyIdParamSchema),
   authorizeFamily(),
@@ -113,7 +113,7 @@ router.get(
  * List active family members only to active members.
  */
 router.get(
-  "/:familyId/members",
+  "/families/:familyId/members",
   authenticate,
   validateRequest(familyIdParamSchema),
   authorizeFamily(),
