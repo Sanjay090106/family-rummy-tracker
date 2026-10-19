@@ -9,6 +9,7 @@ import invitationRoutes from "./routes/invitation.routes";
 import memberRoutes from "./routes/member.routes";
 import playerRoutes from "./routes/player.routes";
 import sessionRoutes from "./routes/session.routes";
+import scoringRoutes from "./routes/scoring.routes";
 
 import { errorHandler } from "./middleware/error-handler";
 
@@ -55,6 +56,7 @@ app.use("/api", invitationRoutes);
 app.use("/api", memberRoutes);
 app.use("/api", playerRoutes);
 app.use("/api", sessionRoutes);
+app.use("/api", scoringRoutes);
 
 // Centralized error handler
 // Must be registered after all routes.
