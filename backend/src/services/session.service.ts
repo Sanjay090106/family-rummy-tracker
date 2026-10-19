@@ -1,5 +1,10 @@
 import { prisma } from "../config/prisma";
-import { MembershipStatus, SessionStatus } from "../generated/prisma/enums";
+import {
+  MembershipStatus,
+  SessionStatus,
+  SetStatus,
+  RoundStatus,
+} from "../generated/prisma/enums";
 
 /**
  * Checks Prisma error codes without depending on the error class.
@@ -520,7 +525,11 @@ export const sessionService = {
   },
 
   /**
-   * Completes a session when it has at least two participants.
+   * Completes a session only when:
+   * - At least two participants exist.
+   * - At least one set exists.
+   * - Every set is completed and contains at least one round.
+   * - Every round is completed.
    */
   async completeSession(input: TransitionSessionInput) {
     const { sessionId, actorUserId } = input;
@@ -564,6 +573,54 @@ export const sessionService = {
         throw new SessionServiceError(
           400,
           "Cannot complete session: at least 2 participants are required"
+        );
+      }
+
+      // A session must contain at least one set.
+      const sets = await tx.gameSet.findMany({
+        where: { sessionId },
+        select: {
+          id: true,
+          status: true,
+          _count: {
+            select: { rounds: true },
+          },
+        },
+      });
+
+      if (sets.length === 0) {
+        throw new SessionServiceError(
+          409,
+          "Cannot complete session: at least one set is required"
+        );
+      }
+
+      // Every set must be completed and contain at least one round.
+      const invalidSet = sets.find(
+        (set) =>
+          set.status !== SetStatus.COMPLETED ||
+          set._count.rounds === 0
+      );
+
+      if (invalidSet) {
+        throw new SessionServiceError(
+          409,
+          "Cannot complete session: every set must be completed and contain at least one round"
+        );
+      }
+
+      // Every round must be completed.
+      const incompleteRoundCount = await tx.round.count({
+        where: {
+          sessionId,
+          status: { not: RoundStatus.COMPLETED },
+        },
+      });
+
+      if (incompleteRoundCount > 0) {
+        throw new SessionServiceError(
+          409,
+          "Cannot complete session: all rounds must be completed"
         );
       }
 

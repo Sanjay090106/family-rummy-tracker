@@ -27,6 +27,12 @@ const { prismaMock } = vi.hoisted(() => ({
       create: vi.fn(),
       count: vi.fn(),
     },
+    gameSet: {
+      findMany: vi.fn(),
+    },
+    round: {
+      count: vi.fn(),
+    },
   },
 }));
 
@@ -617,8 +623,22 @@ describe("Game Sessions API (Step 5)", () => {
         status: "ACTIVE",
       });
 
+
       // Has 2 participants
       prismaMock.sessionParticipant.count.mockResolvedValue(2);
+
+      // The session has one completed set containing at least one round.
+      prismaMock.gameSet.findMany.mockResolvedValue([
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          status: "COMPLETED",
+          _count: { rounds: 1 },
+        },
+      ]);
+
+      // All rounds are completed.
+      prismaMock.round.count.mockResolvedValue(0);
+
       prismaMock.gameSession.updateMany.mockResolvedValue({ count: 1 });
 
       const res = await request(app)
@@ -770,7 +790,18 @@ describe("Game Sessions API (Step 5)", () => {
       });
 
       prismaMock.sessionParticipant.count.mockResolvedValue(2);
-      // Simulate a concurrent process already completing the session
+
+      prismaMock.gameSet.findMany.mockResolvedValue([
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          status: "COMPLETED",
+          _count: { rounds: 1 },
+        },
+      ]);
+
+      prismaMock.round.count.mockResolvedValue(0);
+
+      // Simulate a concurrent transition.
       prismaMock.gameSession.updateMany.mockResolvedValue({ count: 0 });
 
       const res = await request(app)
