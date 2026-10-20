@@ -507,6 +507,73 @@ describe("Family Invitation APIs (Step 4)", () => {
       });
     });
 
+    it("reactivates a LEFT membership and updates its email to the normalized verified email", async () => {
+      getUserMock.mockResolvedValue({
+        data: {
+          user: {
+            id: mockUserId2,
+            email: "  Invitee@Example.com  ",
+            email_confirmed_at: "2026-01-01T00:00:00Z",
+          },
+        },
+        error: null,
+      });
+
+      prismaMock.familyInvitation.findUnique.mockResolvedValue({
+        id: mockInvitationId,
+        familyId: mockFamilyId,
+        email: "invitee@example.com",
+        tokenHash,
+        status: "PENDING",
+        expiresAt: new Date(Date.now() + 86400000),
+        family: { id: mockFamilyId, name: "Smith Family" },
+      });
+
+      prismaMock.familyMembership.findUnique.mockResolvedValue({
+        id: mockMemberMembershipId,
+        familyId: mockFamilyId,
+        supabaseUserId: mockUserId2,
+        email: "old-email@example.com",
+        role: "MEMBER",
+        status: "LEFT",
+        joinedAt: new Date("2025-01-01T00:00:00Z"),
+        leftAt: new Date("2025-06-01T00:00:00Z"),
+      });
+
+      prismaMock.familyInvitation.updateMany.mockResolvedValue({ count: 1 });
+
+      prismaMock.familyMembership.update.mockResolvedValue({
+        id: mockMemberMembershipId,
+        familyId: mockFamilyId,
+        supabaseUserId: mockUserId2,
+        email: "invitee@example.com",
+        role: "MEMBER",
+        status: "ACTIVE",
+        joinedAt: new Date(),
+        leftAt: null,
+      });
+
+      const res = await request(app)
+        .post(`/api/invitations/${rawToken}/accept`)
+        .set("Authorization", "Bearer valid-token");
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("ok");
+
+      expect(prismaMock.familyMembership.update).toHaveBeenCalledWith({
+        where: { id: mockMemberMembershipId },
+        data: {
+          email: "invitee@example.com",
+          status: "ACTIVE",
+          role: "MEMBER",
+          joinedAt: expect.any(Date),
+          leftAt: null,
+        },
+      });
+
+      expect(prismaMock.familyMembership.create).not.toHaveBeenCalled();
+    });
+
     it("rejects acceptance if user email is unverified (email_confirmed_at is null)", async () => {
       getUserMock.mockResolvedValue({
         data: {

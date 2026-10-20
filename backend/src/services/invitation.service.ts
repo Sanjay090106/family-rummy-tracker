@@ -391,6 +391,7 @@ export const invitationService = {
         membership = await tx.familyMembership.update({
           where: { id: existingMembership.id },
           data: {
+            email: normalizedUserEmail,
             status: MembershipStatus.ACTIVE,
             role: FamilyRole.MEMBER,
             joinedAt: now,
